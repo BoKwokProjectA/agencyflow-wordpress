@@ -1,0 +1,13 @@
+{
+  "name": "agencyflow",
+  "version": "1.0.0",
+  "description": "Custom WordPress theme and plugin for AgencyFlow.",
+  "private": true,
+  "license": "GPL-2.0-or-later",
+  "scripts": {
+    "lint:js": "eslint wp-content/themes/agencyflow/assets/js"
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0"
+  }
+}

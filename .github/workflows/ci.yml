@@ -1,0 +1,72 @@
+# GitHub Actions: continuous integration for AgencyFlow.
+#
+# The pipeline in one sentence: every push and every pull request runs the
+# same three checks that a developer would run locally, so a broken commit is
+# caught by a machine instead of by a client.
+#
+#   push / pull request
+#        -> GitHub spins up a clean Ubuntu runner
+#        -> PHP syntax check on every PHP file
+#        -> PHPUnit on the helper functions
+#        -> ESLint on the JavaScript
+#        -> green tick or red cross on the commit
+#
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  php:
+    name: PHP lint and unit tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+
+      # php -l is PHP's built-in syntax checker. It does not run the code, it
+      # only parses it, which is exactly what we want: it catches a missing
+      # semicolon or bracket in a file that would otherwise white-screen the
+      # whole site.
+      - name: Lint every PHP file
+        run: |
+          find wp-content -name '*.php' -print0 \
+            | xargs -0 -n1 -P4 php -l
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Run PHPUnit
+        run: vendor/bin/phpunit --testdox
+
+  javascript:
+    name: JavaScript lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # npm install rather than npm ci, because this repository does not commit
+      # a package-lock.json. On a real client project the lock file would be
+      # committed and this would be npm ci for reproducible builds.
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Run ESLint
+        run: npm run lint:js

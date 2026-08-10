@@ -1,0 +1,72 @@
+/*
+Theme Name: AgencyFlow
+Theme URI: https://github.com/YOURUSERNAME/agencyflow
+Author: Bo Kwok
+Author URI: https://github.com/YOURUSERNAME
+Description: A custom WordPress theme for AgencyFlow, a fictional Manchester digital agency. Built from scratch with semantic HTML5, CSS Flexbox and Grid, and vanilla JavaScript. No page builder, no CSS framework.
+Version: 1.0.0
+Requires at least: 6.0
+Tested up to: 6.8
+Requires PHP: 8.0
+License: GPL-2.0-or-later
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
+Text Domain: agencyflow
+Tags: custom-theme, portfolio, responsive
+*/
+
+/*
+ * This file exists for two reasons:
+ *
+ * 1. The comment block above is what makes WordPress recognise this folder
+ *    as a theme. Remove it and the theme disappears from Appearance > Themes.
+ *
+ * 2. get_stylesheet_uri() points here, so it is the natural home for the
+ *    CSS reset. The rest of the styling lives in assets/css/main.css, which
+ *    functions.php enqueues with this file as a dependency.
+ */
+
+/* --- Reset ------------------------------------------------------------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body,
+h1, h2, h3, h4, p,
+figure, blockquote, dl, dd,
+ul, ol {
+  margin: 0;
+  padding: 0;
+}
+
+ul[class],
+ol[class] {
+  list-style: none;
+}
+
+img,
+picture {
+  max-width: 100%;
+  display: block;
+}
+
+input,
+button,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+/* Respect a visitor's operating-system preference for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

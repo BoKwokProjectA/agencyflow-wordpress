@@ -1,0 +1,64 @@
+# =====================================================================
+#  AgencyFlow .gitignore
+#
+#  This repository lives at the WordPress root, but it only tracks the
+#  code that is actually mine: the custom theme, the custom plugin, the
+#  tests, the CI workflow and the documentation.
+#
+#  Everything else is deliberately excluded, for three reasons:
+#    1. WordPress core is third-party code, downloadable from
+#       wordpress.org. Committing it bloats the repo and creates merge
+#       conflicts on every WordPress update.
+#    2. wp-config.php holds database credentials and the secret
+#       authentication salts. Committing it is a real security incident.
+#    3. Uploads are content, not code. They belong in a backup, not in
+#       version control.
+# =====================================================================
+
+# --- WordPress core --------------------------------------------------
+/wp-admin/
+/wp-includes/
+/index.php
+/wp-*.php
+/xmlrpc.php
+/license.txt
+/readme.html
+
+# --- Secrets and local configuration --------------------------------
+wp-config.php
+wp-config-local.php
+.env
+.env.*
+
+# --- Generated and user content -------------------------------------
+/wp-content/uploads/
+/wp-content/upgrade/
+/wp-content/upgrade-temp-backup/
+/wp-content/cache/
+/wp-content/languages/
+/wp-content/debug.log
+/wp-content/index.php
+/wp-content/themes/index.php
+/wp-content/plugins/index.php
+
+# --- Third-party themes and plugins I did not write ------------------
+/wp-content/themes/twenty*/
+/wp-content/plugins/hello.php
+/wp-content/plugins/akismet/
+
+# --- Dependencies ----------------------------------------------------
+/vendor/
+/node_modules/
+composer.lock
+
+# --- Tooling output --------------------------------------------------
+.phpunit.result.cache
+.phpunit.cache/
+
+# --- Operating system and editor noise ------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+*.swp
+*~

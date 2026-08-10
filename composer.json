@@ -1,0 +1,19 @@
+{
+  "name": "bokwok/agencyflow",
+  "description": "Custom WordPress theme and plugin for AgencyFlow, a client project and lead management website.",
+  "type": "project",
+  "license": "GPL-2.0-or-later",
+  "require": {
+    "php": ">=8.0"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^10.5"
+  },
+  "scripts": {
+    "test": "phpunit",
+    "lint": "find wp-content -name '*.php' -print0 | xargs -0 -n1 php -l"
+  },
+  "config": {
+    "optimize-autoloader": true
+  }
+}
