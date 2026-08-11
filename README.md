@@ -357,9 +357,14 @@ first, are in **`docs/01-INSTALL.md`**. In short:
 
 ## Screenshots
 
-_To add: home page, projects archive with a filter applied, project detail,
-contact form showing validation errors, the Enquiries admin screen, and a green
-CI run._
+![Home page with live weather](https://github.com/BoKwokProjectA/agencyflow-wordpress/edit/main/AgencyFlow home page.png)
+*Home page. The weather strip is fetched from Open-Meteo after the page loads.*
+
+![Projects archive](docs/screenshots/02-archive-all.png)
+*All nine projects in a CSS Grid layout.*
+
+![Filtered to Automation](docs/screenshots/03-archive-filtered.png)
+*The same page after clicking a filter — no page reload, no network request.*
 
 ---
 
