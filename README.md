@@ -357,14 +357,36 @@ first, are in **`docs/01-INSTALL.md`**. In short:
 
 ## Screenshots
 
-![Home page with live weather](https://github.com/BoKwokProjectA/agencyflow-wordpress/edit/main/AgencyFlow home page.png)
 *Home page. The weather strip is fetched from Open-Meteo after the page loads.*
+![Home page with live weather](https://github.com/BoKwokProjectA/agencyflow-wordpress/blob/main/AgencyFlow%20home%20page.png)
 
-![Projects archive](docs/screenshots/02-archive-all.png)
 *All nine projects in a CSS Grid layout.*
+![Projects archive](https://github.com/BoKwokProjectA/agencyflow-wordpress/blob/main/AgencyFlow%20all%20project.png)
 
-![Filtered to Automation](docs/screenshots/03-archive-filtered.png)
 *The same page after clicking a filter — no page reload, no network request.*
+![Filtered to Automation](https://github.com/BoKwokProjectA/agencyflow-wordpress/blob/main/AgencyFlow%20project%20automation%20category.png)
+
+*A single project. The facts panel is built from custom meta fields; the completion date is stored as `YYYY-MM-DD` and reformatted for display.*
+![Project detail page](https://github.com/BoKwokProjectA/agencyflow-wordpress/blob/main/AgencyFlow%20project%20detail.png)
+
+*The archive at 375px. Mobile-first CSS with breakpoints at 600px and 900px.*
+![Mobile layout](https://github.com/BoKwokProjectA/agencyflow-wordpress/blob/main/AgencyFlow%20mobile%20view.png)
+
+*Client-side validation. Errors appear under the field they belong to, linked with `aria-describedby`, and focus moves to the first invalid input.*
+![Form validation errors](https://github.com/BoKwokProjectA/agencyflow-wordpress/blob/main/AgencyFlow%20contact%20form%20with%20red%20validation%20errors.png)
+
+*A valid enquiry. The button shows a loading state while the request is in flight.*
+![Successful submission](https://github.com/BoKwokProjectA/agencyflow-wordpress/blob/main/AgencyFlow%20contact%20form%20without%20red%20validation%20errors.png)
+
+*The enquiry saved as a custom post type, with the submitted fields shown in a read-only meta box.*
+![Enquiry stored in the admin](https://github.com/BoKwokProjectA/agencyflow-wordpress/blob/main/AgencyFlow%20add%20new%20contract.png)
+
+*The automated notification, captured locally by Mailpit. Sent with `wp_mail()` after the enquiry is validated and stored.*
+![Automated notification email](https://github.com/BoKwokProjectA/agencyflow-wordpress/blob/main/AgencyFlow%20notification%20email%20in%20mailbox.png)
+
+*The custom endpoint at `/wp-json/agencyflow/v1/projects`, returning only the fields the front end needs rather than the full core response.*
+![Custom REST API response](https://github.com/BoKwokProjectA/agencyflow-wordpress/blob/main/AgencyFlow%20raw%20json.jpeg)
+
 
 ---
 
