@@ -15,8 +15,8 @@ ESLint
 AgencyFlow is the website for a fictional Manchester digital agency. Visitors can
 browse the agency's client projects, filter them by type without a page reload,
 open a detail page for each one, see live local weather pulled from a third-party
-API, and submit a project enquiry that is validated, stored and automatically
-notified to the team.
+API, and submit a project enquiry that is validated, stored and followed by an
+automated email-notification attempt to the site administrator.
 
 Everything a client would need to manage — projects, their categories, their
 custom fields, and the enquiries that come in — is managed from the standard
@@ -33,8 +33,9 @@ plugin development, PHP, and plain JavaScript with nothing underneath it.
 I set myself two constraints. First, no page builder and no CSS framework —
 because the point was to demonstrate that I can write the HTML, CSS and
 JavaScript myself, not configure someone else's. Second, no third-party plugin
-for anything the project is meant to demonstrate; the custom post type, the REST
-endpoint and the enquiry handling are all my own code.
+for anything the project is meant to demonstrate; the custom post type, REST
+endpoint and enquiry handling are implemented in this repository rather than
+outsourced to third-party plugins.
 
 ---
 
@@ -50,11 +51,13 @@ endpoint and the enquiry handling are all my own code.
   front end with `fetch`
 - External API integration with Open-Meteo, including loading and error states
 - A project enquiry form validated in the browser and again on the server
-- An automated email notification when a valid enquiry is received
-- Escaped output and sanitised input throughout, with nonce protection on
-  state-changing requests
+- A server-side email notification attempt after each valid enquiry is stored,
+  with mail failure recorded without losing the enquiry
+- Escaped output and sanitised input in the custom application code, with nonce
+  protection on state-changing requests
 - Unit tests on the pure helper functions
-- A CI pipeline running PHP linting, PHPUnit and ESLint on every push
+- A GitHub Actions CI pipeline running PHP linting, PHPUnit and ESLint on pushes
+  to `main` and pull requests targeting `main`
 
 ---
 
@@ -62,18 +65,53 @@ endpoint and the enquiry handling are all my own code.
 
 | Layer | Technology |
 |---|---|
-| CMS | WordPress |
-| Server language | PHP 8 |
+| CMS | WordPress (plugin declares WordPress 6.0+) |
+| Server language | PHP 8 (Composer requires PHP >= 8.0; CI uses PHP 8.2) |
 | Database | MySQL, accessed only through WordPress APIs |
 | Markup | Semantic HTML5 |
 | Styling | Hand-written CSS — custom properties, Flexbox, Grid, media queries |
 | Client scripting | Vanilla JavaScript — DOM API, Fetch, async/await |
 | Internal API | WordPress REST API, custom namespace |
 | External API | Open-Meteo |
-| Version control | Git and GitHub, with a feature branch and pull request |
-| CI | GitHub Actions |
+| Version control | Git/GitHub workflow documented in `docs/05-GIT-PLAN.md` |
+| CI | GitHub Actions (PHP 8.2 and Node 20 runners) |
 | Testing | PHPUnit, ESLint, and a documented manual test matrix |
 | Local environment | LocalWP |
+
+### Source bundle contents
+
+This ZIP is a **project source bundle, not a complete WordPress installation**.
+It contains the custom theme and plugin, tests, CI configuration and project
+documentation. WordPress core, `wp-config.php`, uploads, Composer's `vendor/`
+directory and `node_modules/` are not bundled.
+
+```text
+agencyflow/
+├── .github/workflows/ci.yml
+├── docs/
+│   ├── 01-INSTALL.md
+│   ├── 02-CONTENT.md
+│   ├── 03-CODE-WALKTHROUGH.md
+│   ├── 04-TESTING.md
+│   ├── 05-GIT-PLAN.md
+│   └── 06-INTERVIEW-PREP.md
+├── tests/
+│   ├── bootstrap.php
+│   └── HelpersTest.php
+├── wp-content/
+│   ├── plugins/agencyflow-project-manager/
+│   └── themes/agencyflow/
+├── composer.json
+├── package.json
+├── phpunit.xml
+├── eslint.config.js
+├── .gitignore
+├── gitignore.txt
+└── README.md
+```
+
+`.gitignore` and `gitignore.txt` contain the same ignore rules in the supplied
+archive.
 
 ---
 
@@ -129,13 +167,15 @@ WordPress selects these by filename. There is no routing configuration.
 
 ## Custom Theme
 
-- `add_theme_support()` for the title tag, featured images and HTML5 markup
+- `add_theme_support()` for the title tag, featured images, HTML5 markup and
+  automatic feed links, plus a cropped `agencyflow-card` image size
 - One registered menu location, with a PHP fallback so the header is never empty
 - Assets loaded with `wp_enqueue_style()` and `wp_enqueue_script()`, with a
   version string for cache busting and a declared dependency between the two
   stylesheets
-- Scripts enqueued **conditionally** — the filter script only loads on the
-  projects archive, the enquiry script only on the contact page
+- Scripts enqueued **conditionally** — weather and featured-project loading on
+  the front page, filtering on project archives/taxonomy pages, and enquiry
+  handling on the contact page
 - `wp_localize_script()` passes the REST base URL and a nonce from PHP into
   JavaScript, so neither is hardcoded
 - Two filters, `excerpt_length` and `excerpt_more`, alongside the actions — the
@@ -207,8 +247,10 @@ that leaves the rest of the page working.
 a disabled-button loading state, a JSON `POST`, per-field error rendering from the
 server's response, and a `finally` block so the button can never be left stuck.
 
-All four check `response.ok`, because `fetch` resolves rather than rejects on a
-404 or 500.
+The networked scripts handle non-success responses explicitly because `fetch`
+resolves rather than rejects on an HTTP error: `featured-projects.js` and
+`weather.js` check `response.ok`, while `enquiry.js` branches on the returned HTTP
+status (`201`, `422`, or another failure). `filter.js` performs no network request.
 
 ---
 
@@ -234,7 +276,7 @@ Body: `name`, `email`, `company`, `project_type`, `budget`, `message`, `nonce`.
 
 | Status | Meaning |
 |---|---|
-| 201 | Created — enquiry stored and notification sent |
+| 201 | Created — enquiry stored and email notification attempted |
 | 403 | Nonce missing or expired |
 | 422 | Well-formed request, but fields failed validation; an `errors` object names each one |
 | 500 | Could not save |
@@ -256,15 +298,15 @@ click / page load -> fetch(GET api.open-meteo.com/v1/forecast?…)
    -> JSON response -> parse -> update the DOM
 ```
 
-It needs no API key for non-commercial use, which is why the call can safely live
-in client-side JavaScript. If a key were required it could not go in a JS file at
-all — anything shipped to the browser is public — and would need to sit in PHP
-and be proxied.
+The implementation calls Open-Meteo directly from client-side JavaScript and no
+API key or secret is stored in this repository. If a future provider required a
+secret key, it could not safely be embedded in browser JavaScript and would need
+to be kept server-side, for example behind a PHP proxy endpoint.
 
-Both failure modes are handled: a network failure rejects the promise, and a bad
-parameter returns a 400 with a JSON error body, which `response.ok` catches. In
-either case the strip shows "Weather unavailable" and the rest of the page is
-unaffected.
+The weather script handles both network failures and HTTP error responses: the
+request is wrapped in `try`/`catch`, and a non-success status is rejected via
+`response.ok`. On failure the strip shows "Weather unavailable" while the rest
+of the page remains available.
 
 ---
 
@@ -287,33 +329,33 @@ server problem would be worse than a missing email.
 | Concern | Approach |
 |---|---|
 | SQL injection | No SQL is written. `WP_Query`, `wp_insert_post()` and `update_post_meta()` handle escaping. |
-| XSS | Every dynamic value escaped on output with `esc_html()`, `esc_attr()` or `esc_url()`. JavaScript builds DOM nodes with `textContent`, never `innerHTML` with user data. |
+| XSS | Custom PHP output escapes untrusted values with context-appropriate WordPress escaping functions; REST-loaded project cards are built with `createElement`/`textContent` rather than injecting user data through `innerHTML`. |
 | CSRF | Nonces on the meta box save and on the enquiry endpoint. |
 | Privilege escalation | `current_user_can( 'edit_post', $post_id )` before writing meta. |
 | Untrusted input | Sanitised on input, then validated against allowlists for project type and budget. |
-| Bypassed client validation | The server re-runs every rule. Verified by POSTing invalid data straight to the endpoint from the console. |
+| Bypassed client validation | The server re-runs the validation rules. `docs/04-TESTING.md` includes a direct REST POST test designed to verify this manually. |
 | Resource exhaustion | `per_page` range-validated. |
-| Secrets | None in the repository. `wp-config.php` is gitignored, and the external API needs no key. |
-| Direct file access | Every PHP file exits unless `ABSPATH` is defined. |
-| Information leakage | Errors give visitors a plain sentence; detail goes to the console or `debug.log`. |
+| Secrets | No application secret is present in the source bundle; `wp-config.php` and `.env*` are gitignored, and the Open-Meteo request contains no key. |
+| Direct file access | WordPress-dependent theme/plugin PHP files guard against direct access with `ABSPATH`; the pure helper file intentionally has no WordPress dependency so PHPUnit can load it directly. |
+| Information leakage | Public failures use user-facing messages; front-end request details are logged to the browser console and mail failure can be logged to `debug.log` when `WP_DEBUG` is enabled. |
 
 ---
 
 ## Testing
 
-**Automated:** PHP syntax checking with `php -l` across every file, PHPUnit
-covering the pure helper functions, and ESLint on the JavaScript.
+**Automated checks configured in the repository:** `php -l` across PHP files under
+`wp-content`, PHPUnit for the pure helper functions, and ESLint for the theme's
+JavaScript.
 
-The PHPUnit suite deliberately does not boot WordPress, which is why it runs in
-under a second. Its scope is the logic worth protecting: comma-splitting, date
-parsing including impossible dates like `2025-02-30`, and every branch of the
-enquiry validator — including the case where a project type outside the allowlist
-is rejected.
+The PHPUnit suite deliberately does not boot WordPress or a database. Its scope
+is comma-splitting, completion-date parsing (including impossible dates such as
+`2025-02-30`) and the enquiry validator, including allowlist rejection cases.
 
-**Manual:** a documented matrix in `docs/04-TESTING.md` covering three
-breakpoints, navigation, every template, the filter, both API integrations under
-throttled and offline conditions, and eight form-submission cases including a
-deliberate server-side bypass test.
+**Manual test plan:** `docs/04-TESTING.md` contains an unchecked matrix covering
+375px, 768px and 1280px layouts, navigation/templates, filtering, API loading and
+failure states, form validation, stored enquiries, local mail capture and a
+direct REST POST intended to bypass browser validation. The ZIP contains the
+test plan; it does not record those manual checks as completed.
 
 ```bash
 composer install && vendor/bin/phpunit --testdox
@@ -322,15 +364,16 @@ npm install && npm run lint:js
 
 ---
 
-## CI/CD
+## Continuous Integration
 
-`.github/workflows/ci.yml` runs on every push to `main` and every pull request:
+`.github/workflows/ci.yml` runs on pushes to `main` and pull requests targeting
+`main`:
 
 ```
-push / PR -> clean Ubuntu runner
-   -> php -l on every PHP file
-   -> composer install -> PHPUnit
-   -> npm install -> ESLint
+push to main / PR targeting main -> clean Ubuntu runners
+   -> PHP job: php -l on PHP files under wp-content
+              -> composer install -> PHPUnit
+   -> JavaScript job: npm install -> ESLint
    -> pass or fail on the commit
 ```
 
@@ -343,7 +386,8 @@ reviewer — or a client — sees it.
 ## Installation
 
 Full step-by-step instructions, including the debug configuration to set up
-first, are in **`docs/01-INSTALL.md`**. In short:
+first, are in **`docs/01-INSTALL.md`**. The plugin header declares WordPress 6.0+
+and PHP 8.0+, while `composer.json` also requires PHP 8.0 or newer. In short:
 
 1. Create a WordPress site in LocalWP.
 2. Copy `wp-content/themes/agencyflow/` and
@@ -355,45 +399,22 @@ first, are in **`docs/01-INSTALL.md`**. In short:
 
 ---
 
-## Screenshots
+## Documentation Included
 
-*Home page. The weather strip is fetched from Open-Meteo after the page loads.*
-![Home page with live weather](https://github.com/BoKwokProjectA/agencyflow-wordpress/blob/main/AgencyFlow%20home%20page.png)
+The source bundle includes six supporting documents:
 
-*All nine projects in a CSS Grid layout.*
-![Projects archive](https://github.com/BoKwokProjectA/agencyflow-wordpress/blob/main/AgencyFlow%20all%20project.png)
+- `docs/01-INSTALL.md` — LocalWP setup, debugging, activation order, content setup
+  and troubleshooting
+- `docs/02-CONTENT.md` — nine fictional project entries to populate the site
+- `docs/03-CODE-WALKTHROUGH.md` — guided walkthrough of the implementation
+- `docs/04-TESTING.md` — automated commands plus an unchecked manual test matrix
+- `docs/05-GIT-PLAN.md` — a proposed commit, feature-branch and pull-request
+  workflow; the ZIP itself contains no `.git` history
+- `docs/06-INTERVIEW-PREP.md` — project/interview preparation notes
 
-*The same page after clicking a filter — no page reload, no network request.*
-![Filtered to Automation](https://github.com/BoKwokProjectA/agencyflow-wordpress/blob/main/AgencyFlow%20project%20automation%20category.png)
-
-*A single project. The facts panel is built from custom meta fields; the completion date is stored as `YYYY-MM-DD` and reformatted for display.*
-![Project detail page](https://github.com/BoKwokProjectA/agencyflow-wordpress/blob/main/AgencyFlow%20project%20detail.png)
-
-*The archive at 375px. Mobile-first CSS with breakpoints at 600px and 900px.*
-![Mobile layout](https://github.com/BoKwokProjectA/agencyflow-wordpress/blob/main/AgencyFlow%20mobile%20view.png)
-
-*Client-side validation. Errors appear under the field they belong to, linked with `aria-describedby`, and focus moves to the first invalid input.*
-![Form validation errors](https://github.com/BoKwokProjectA/agencyflow-wordpress/blob/main/AgencyFlow%20contact%20form%20with%20red%20validation%20errors.png)
-
-*A valid enquiry. The button shows a loading state while the request is in flight.*
-![Successful submission](https://github.com/BoKwokProjectA/agencyflow-wordpress/blob/main/AgencyFlow%20contact%20form%20without%20red%20validation%20errors.png)
-
-*The enquiry saved as a custom post type, with the submitted fields shown in a read-only meta box.*
-![Enquiry stored in the admin](https://github.com/BoKwokProjectA/agencyflow-wordpress/blob/main/AgencyFlow%20add%20new%20contract.png)
-
-*The automated notification, captured locally by Mailpit. Sent with `wp_mail()` after the enquiry is validated and stored.*
-![Automated notification email](https://github.com/BoKwokProjectA/agencyflow-wordpress/blob/main/AgencyFlow%20notification%20email%20in%20mailbox.png)
-
-*The custom endpoint at `/wp-json/agencyflow/v1/projects`, returning only the fields the front end needs rather than the full core response.*
-![Custom REST API response](https://github.com/BoKwokProjectA/agencyflow-wordpress/blob/main/AgencyFlow%20raw%20json.jpeg)
-
-
----
-
-## Challenges and Solutions
-
-_To be completed with the real problem encountered during setup — see
-`docs/06-INTERVIEW-PREP.md` for the structure. Not filled in speculatively._
+No screenshot image files are included in the supplied ZIP, so this README does
+not claim screenshots or completed manual-test evidence that are not present in
+the archive.
 
 ---
 
