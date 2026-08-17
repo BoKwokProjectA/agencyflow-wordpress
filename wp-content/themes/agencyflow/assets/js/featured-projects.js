@@ -1,38 +1,20 @@
 /**
- * Load featured projects from our own WordPress REST endpoint.
- *
- *   GET /wp-json/agencyflow/v1/projects?per_page=3
- *
- * This is the piece that proves the site consumes its own API rather than
- * only rendering PHP. The projects on the home page are fetched by the
- * browser after the page loads, then built into the DOM by JavaScript.
- *
- * INTERVIEW CHECKLIST FOR THIS FILE
- *   Endpoint      /wp-json/agencyflow/v1/projects
- *   Method        GET
- *   Response      JSON array of project objects
- *   Loading path  container shows "Loading projects…" first
- *   Error path    network failure OR a non-2xx status both show a message
- *                 and log the detail to the console
+ * Load featured projects from the WordPress REST API.
  */
 
 'use strict';
 
 /**
- * Build one project card element.
+ * Build a project card.
  *
- * Built with createElement and textContent rather than one big innerHTML
- * string. That means any character in the project title is treated as text,
- * never as markup, so this cannot introduce a cross-site scripting hole.
- *
- * @param {Object} project A project object from the API.
+ * @param {Object} project Project data from the API.
  * @returns {HTMLElement}
  */
 function buildProjectCard(project) {
   const article = document.createElement('article');
   article.className = 'project-card';
 
-  // --- Image (only if the project has a featured image) ------------------
+  // Featured image.
   if (project.image) {
     const media = document.createElement('div');
     media.className = 'project-card__media';
@@ -46,7 +28,7 @@ function buildProjectCard(project) {
     article.appendChild(media);
   }
 
-  // --- Body -------------------------------------------------------------
+  // Card content.
   const body = document.createElement('div');
   body.className = 'project-card__body';
 
@@ -80,7 +62,7 @@ function buildProjectCard(project) {
     body.appendChild(excerpt);
   }
 
-  // --- Metadata ---------------------------------------------------------
+  // Project metadata.
   const meta = document.createElement('div');
   meta.className = 'project-meta';
 
@@ -99,7 +81,7 @@ function buildProjectCard(project) {
 }
 
 /**
- * Build a single label/value pair for the metadata row.
+ * Build a project metadata item.
  *
  * @param {string} key   Label text.
  * @param {string} value Value text.
@@ -123,11 +105,7 @@ function buildMetaItem(key, value) {
 }
 
 /**
- * Fetch the projects and render them.
- *
- * async/await is used instead of .then() chains because it reads top to
- * bottom like ordinary code. 'await' pauses this function until the promise
- * settles; it does not block the browser.
+ * Fetch and render featured projects.
  */
 async function loadFeaturedProjects() {
   const container = document.querySelector('#featured-projects');
@@ -136,9 +114,7 @@ async function loadFeaturedProjects() {
     return;
   }
 
-  // --- Loading state ----------------------------------------------------
-  // Set before the request starts. A visitor on a slow connection sees
-  // something honest rather than an empty box.
+  // Show the loading state.
   container.innerHTML = '';
   const loading = document.createElement('p');
   loading.className = 'is-loading';
@@ -152,8 +128,7 @@ async function loadFeaturedProjects() {
       headers: { Accept: 'application/json' }
     });
 
-    // fetch() only rejects on a NETWORK failure. A 404 or 500 still resolves,
-    // so the status must be checked by hand. This catches a lot of people out.
+    // Treat unsuccessful HTTP responses as errors.
     if (!response.ok) {
       throw new Error('Request failed with status ' + response.status);
     }
@@ -171,8 +146,7 @@ async function loadFeaturedProjects() {
       return;
     }
 
-    // A DocumentFragment collects the new nodes off-screen, so the browser
-    // only reflows the page once instead of on every appendChild.
+    // Build the cards before adding them to the page.
     const fragment = document.createDocumentFragment();
 
     projects.forEach(function (project) {
@@ -181,7 +155,7 @@ async function loadFeaturedProjects() {
 
     container.appendChild(fragment);
   } catch (error) {
-    // --- Error state ----------------------------------------------------
+    // Show a fallback message.
     container.innerHTML = '';
 
     const message = document.createElement('p');
@@ -189,7 +163,6 @@ async function loadFeaturedProjects() {
     message.textContent = 'Could not load projects right now. Please try the Projects page.';
     container.appendChild(message);
 
-    // The visitor gets a plain sentence; the developer gets the detail.
     console.error('AgencyFlow: featured projects failed —', error);
   }
 }

@@ -1,47 +1,26 @@
 /**
- * Project filtering.
- *
- * The whole feature in one sentence: when a filter button is clicked, read
- * the type off that button, then loop over every project card and add or
- * remove a CSS class depending on whether the card's type matches.
- *
- * No page reload, no network request. The cards are already in the HTML,
- * rendered by PHP, so filtering is purely a DOM operation.
- *
- * INTERVIEW CHECKLIST FOR THIS FILE
- *   What event fires?         'click' on a filter button.
- *   What function runs?       handleFilterClick, then applyFilter.
- *   What is selected?         The buttons and the cards, via querySelectorAll.
- *   What changes in the DOM?  The 'is-active' class on buttons and the
- *                             'is-hidden' class on cards, plus the status text.
- *   What if it fails?         If there is no filter bar on the page the script
- *                             returns early and does nothing.
+ * Project filtering for the projects archive.
  */
 
 'use strict';
 
 /**
- * Show only the cards matching a type.
+ * Show project cards matching the selected type.
  *
- * @param {string} selectedType Taxonomy slug, or 'all' for everything.
- * @param {NodeList} cards      All project card elements.
- * @returns {number}            How many cards ended up visible.
+ * @param {string}   selectedType Taxonomy slug, or 'all'.
+ * @param {NodeList} cards        Project card elements.
+ * @returns {number} Number of visible cards.
  */
 function applyFilter(selectedType, cards) {
   let visibleCount = 0;
 
-  // NodeList has forEach. Each 'card' is a real DOM element.
   cards.forEach(function (card) {
-    // dataset reads data-* attributes. PHP wrote data-types="website ecommerce"
-    // into each card, so this is a space-separated string of slugs.
+    // Read the project's assigned type slugs.
     const cardTypes = (card.dataset.types || '').split(' ');
 
     const matches = selectedType === 'all' || cardTypes.indexOf(selectedType) !== -1;
 
-    // classList.toggle with a second argument: add the class when the second
-    // argument is true, remove it when false. The CSS rule
-    // `.project-card.is-hidden { display: none; }` does the actual hiding —
-    // JavaScript decides *what* to hide, CSS decides *how*.
+    // Hide cards that do not match the selected type.
     card.classList.toggle('is-hidden', !matches);
 
     if (matches) {
@@ -53,7 +32,7 @@ function applyFilter(selectedType, cards) {
 }
 
 /**
- * Update the "showing X of Y" line and the empty state.
+ * Update the project count and empty state.
  *
  * @param {number} visible Number of visible cards.
  * @param {number} total   Total number of cards.
@@ -63,8 +42,7 @@ function updateStatus(visible, total) {
   const empty = document.querySelector('#filter-empty');
 
   if (status) {
-    // textContent, not innerHTML. textContent treats the value as plain text,
-    // so even if a string contained '<script>' it could never execute.
+    
     status.textContent = 'Showing ' + visible + ' of ' + total + ' projects.';
   }
 
@@ -74,14 +52,13 @@ function updateStatus(visible, total) {
 }
 
 /**
- * Set up the filter bar.
+ * Initialise project filtering.
  */
 function initProjectFilter() {
   const filterBar = document.querySelector('#project-filters');
   const cards = document.querySelectorAll('.project-card');
 
-  // Guard clause: this script is only enqueued on the projects archive, but
-  // being defensive costs nothing and prevents console errors.
+  // Exit if the filter UI is not available.
   if (!filterBar || cards.length === 0) {
     return;
   }
@@ -89,15 +66,11 @@ function initProjectFilter() {
   const buttons = filterBar.querySelectorAll('.filter-button');
 
   buttons.forEach(function (button) {
-    // addEventListener attaches a function to run when the event happens.
-    // 'click' fires on mouse click AND on Enter/Space for keyboard users,
-    // because these are real <button> elements. That is a reason to use
-    // <button> rather than a styled <div>.
+    
     button.addEventListener('click', function () {
       const selectedType = button.dataset.type || 'all';
 
-      // Move the active state: clear it from every button, then set it on
-      // the one that was clicked.
+      // Update the active filter button.
       buttons.forEach(function (other) {
         other.classList.remove('is-active');
         other.setAttribute('aria-pressed', 'false');
@@ -111,12 +84,11 @@ function initProjectFilter() {
     });
   });
 
-  // Set the initial status line on page load.
+  // Set the initial project count.
   updateStatus(cards.length, cards.length);
 }
 
-// The script is enqueued in the footer, so the DOM already exists by the time
-// this runs. DOMContentLoaded is still checked in case that ever changes.
+// Initialise once the DOM is ready.
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initProjectFilter);
 } else {

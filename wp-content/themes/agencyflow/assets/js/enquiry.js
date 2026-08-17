@@ -1,37 +1,14 @@
 /**
- * Project enquiry form.
- *
- * Flow:
- *   submit event -> preventDefault -> validate in the browser
- *   -> POST JSON to /wp-json/agencyflow/v1/enquiries
- *   -> PHP validates again -> render success or per-field errors
- *
- * The browser checks are for SPEED — instant feedback, no round trip. They
- * are not security. Anyone can open devtools, delete this file, and POST
- * straight to the endpoint, which is exactly why the PHP validates the same
- * rules again on the server. Client-side validation is a convenience;
- * server-side validation is the actual gate.
- *
- * INTERVIEW CHECKLIST FOR THIS FILE
- *   Event         'submit' on the form
- *   Why preventDefault?  Stops the browser doing a full page reload so we
- *                        can send the data with fetch instead.
- *   Method        POST, JSON body, nonce included
- *   Statuses      201 created, 422 validation failed, 403 bad nonce, 500 saved failed
- *   Error path    field errors from the server are shown under each field
+ * Handles validation and submission for the project enquiry form.
+ * Server-side validation remains authoritative.
  */
-
 'use strict';
 
 /**
- * Client-side validation rules.
- *
- * These deliberately mirror agencyflow_validate_enquiry() in the plugin.
- * Keeping them in step by hand is a real trade-off of this approach and it
- * is noted in the README as a future improvement.
+ * Validate enquiry fields before submission.
  *
  * @param {Object} values Field values keyed by field name.
- * @returns {Object} Map of field name to error message. Empty means valid.
+ * @returns {Object} Field validation errors.
  */
 function validateEnquiry(values) {
   const errors = {};
@@ -66,7 +43,7 @@ function validateEnquiry(values) {
 }
 
 /**
- * Clear every error message and error class in the form.
+ * Clear validation errors from the form.
  *
  * @param {HTMLFormElement} form The enquiry form.
  */
@@ -85,14 +62,10 @@ function clearErrors(form) {
 }
 
 /**
- * Display errors underneath the fields they belong to.
- *
- * aria-invalid and the error element's id being referenced by
- * aria-describedby in the HTML is what makes this accessible: a screen
- * reader announces the message when focus reaches the broken field.
+ * Display field validation errors.
  *
  * @param {HTMLFormElement} form   The enquiry form.
- * @param {Object}          errors Map of field name to message.
+ * @param {Object}          errors Field validation errors.
  */
 function showErrors(form, errors) {
   Object.keys(errors).forEach(function (fieldName) {
@@ -116,8 +89,8 @@ function showErrors(form, errors) {
     input.setAttribute('aria-invalid', 'true');
   });
 
-  // Move focus to the first broken field so a keyboard user is taken
-  // straight to the problem.
+  // Focus the first field with an error.
+
   const firstField = Object.keys(errors)[0];
   const firstInput = form.querySelector('[name="' + firstField + '"]');
 
@@ -127,11 +100,11 @@ function showErrors(form, errors) {
 }
 
 /**
- * Write a message into the form-level status area.
+ * Update the form status message.
  *
  * @param {HTMLElement} statusEl The status element.
- * @param {string}      message  Text to show.
- * @param {string}      state    'success', 'error' or '' for neutral.
+ * @param {string}      message  Message to display.
+ * @param {string}      state    Status state.
  */
 function setStatus(statusEl, message, state) {
   if (!statusEl) {
@@ -149,7 +122,7 @@ function setStatus(statusEl, message, state) {
 }
 
 /**
- * Wire up the form.
+ * Initialise the enquiry form.
  */
 function initEnquiryForm() {
   const form = document.querySelector('#enquiry-form');
@@ -161,9 +134,7 @@ function initEnquiryForm() {
   const statusEl = document.querySelector('#form-status');
   const submitButton = form.querySelector('button[type="submit"]');
 
-  // Clear a field's error as soon as the visitor starts fixing it. 'input'
-  // fires on every keystroke; 'change' fires when a select loses focus with
-  // a new value, which is why both are used.
+  // Clear validation errors when a field is updated.
   form.querySelectorAll('input, textarea').forEach(function (input) {
     input.addEventListener('input', function () {
       const wrapper = input.closest('.field');
@@ -195,14 +166,11 @@ function initEnquiryForm() {
   });
 
   form.addEventListener('submit', async function (event) {
-    // Stop the browser's default behaviour, which is to reload the page and
-    // send the form as a normal POST. We want to send it with fetch instead.
     event.preventDefault();
 
     clearErrors(form);
     setStatus(statusEl, '', '');
 
-    // FormData reads the current values straight out of the form elements.
     const formData = new FormData(form);
 
     const values = {
@@ -214,7 +182,6 @@ function initEnquiryForm() {
       message: (formData.get('message') || '').trim()
     };
 
-    // --- Step 1: browser-side check ---------------------------------------
     const errors = validateEnquiry(values);
 
     if (Object.keys(errors).length > 0) {
@@ -223,16 +190,13 @@ function initEnquiryForm() {
       return;
     }
 
-    // --- Step 2: loading state -------------------------------------------
-    // Disabling the button prevents a double submission from an impatient
-    // second click.
+    
     if (submitButton) {
       submitButton.disabled = true;
       submitButton.textContent = 'Sending…';
     }
     setStatus(statusEl, 'Sending your enquiry…', '');
 
-    // --- Step 3: send to the server --------------------------------------
     try {
       const response = await fetch(agencyflowData.restUrl + 'enquiries', {
         method: 'POST',
@@ -248,29 +212,25 @@ function initEnquiryForm() {
           project_type: values.project_type,
           budget: values.budget,
           message: values.message,
-          // The nonce PHP put on the page. Without it the endpoint replies 403.
           nonce: agencyflowData.nonce
         })
       });
 
       const payload = await response.json();
 
-      // 201 Created — success.
       if (response.status === 201) {
         form.reset();
         setStatus(statusEl, payload.message || 'Thanks — your enquiry is with us.', 'success');
         return;
       }
 
-      // 422 — the server rejected specific fields. WordPress puts our error
-      // map inside payload.data.errors when a WP_Error carries extra data.
+      // Display server-side validation errors.
       if (response.status === 422 && payload.data && payload.data.errors) {
         showErrors(form, payload.data.errors);
         setStatus(statusEl, payload.message || 'Please check the highlighted fields.', 'error');
         return;
       }
 
-      // 403 (stale nonce), 500 (save failed) or anything else.
       throw new Error(payload.message || 'Request failed with status ' + response.status);
     } catch (error) {
       setStatus(
@@ -280,8 +240,7 @@ function initEnquiryForm() {
       );
       console.error('AgencyFlow: enquiry submission failed —', error);
     } finally {
-      // 'finally' runs whether the request succeeded or threw, so the button
-      // can never be left stuck in its disabled state.
+      // Restore the submit button.
       if (submitButton) {
         submitButton.disabled = false;
         submitButton.textContent = 'Send enquiry';
