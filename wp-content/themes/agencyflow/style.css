@@ -15,17 +15,11 @@ Tags: custom-theme, portfolio, responsive
 */
 
 /*
- * This file exists for two reasons:
- *
- * 1. The comment block above is what makes WordPress recognise this folder
- *    as a theme. Remove it and the theme disappears from Appearance > Themes.
- *
- * 2. get_stylesheet_uri() points here, so it is the natural home for the
- *    CSS reset. The rest of the styling lives in assets/css/main.css, which
- *    functions.php enqueues with this file as a dependency.
+ * Base reset styles.
+ * Main theme styles are in assets/css/main.css.
  */
 
-/* --- Reset ------------------------------------------------------------- */
+/* Reset */
 
 *,
 *::before,
@@ -60,7 +54,7 @@ select {
   color: inherit;
 }
 
-/* Respect a visitor's operating-system preference for less motion. */
+/* Respect reduced-motion preferences. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

@@ -1,13 +1,6 @@
 <?php
 /**
- * Unit tests for the pure helper functions.
- *
- * These are UNIT tests: each one calls a single function with known input and
- * asserts the output, with no database, no WordPress and no HTTP. That is why
- * the whole suite runs in well under a second.
- *
- * The functions chosen are the ones with real logic worth protecting — date
- * parsing and validation rules — rather than thin wrappers around WordPress.
+ * Unit tests for AgencyFlow helper functions.
  *
  * @package AgencyFlow
  */
@@ -66,9 +59,7 @@ final class HelpersTest extends TestCase {
 	}
 
 	public function test_format_completion_date_rejects_impossible_dates() {
-		// Correct shape, but 30 February does not exist. This is the case a
-		// regular expression alone would let through, which is why the
-		// function also calls checkdate().
+		// Reject impossible calendar dates.
 		$this->assertSame( '', agencyflow_format_completion_date( '2025-02-30' ) );
 		$this->assertSame( '', agencyflow_format_completion_date( '2025-13-01' ) );
 	}
@@ -127,9 +118,7 @@ final class HelpersTest extends TestCase {
 	}
 
 	public function test_project_type_outside_the_allowed_list_is_rejected() {
-		// This is the important security case. The dropdown on the page only
-		// offers four values, but a request sent directly to the endpoint can
-		// contain anything at all, so the server checks against the list.
+		// Reject values outside the allowed project types.
 		$data                 = $this->valid_enquiry();
 		$data['project_type'] = 'Something I invented';
 

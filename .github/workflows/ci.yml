@@ -1,16 +1,5 @@
-# GitHub Actions: continuous integration for AgencyFlow.
-#
-# The pipeline in one sentence: every push and every pull request runs the
-# same three checks that a developer would run locally, so a broken commit is
-# caught by a machine instead of by a client.
-#
-#   push / pull request
-#        -> GitHub spins up a clean Ubuntu runner
-#        -> PHP syntax check on every PHP file
-#        -> PHPUnit on the helper functions
-#        -> ESLint on the JavaScript
-#        -> green tick or red cross on the commit
-#
+# AgencyFlow continuous integration.
+
 name: CI
 
 on:
@@ -34,10 +23,7 @@ jobs:
           php-version: '8.2'
           coverage: none
 
-      # php -l is PHP's built-in syntax checker. It does not run the code, it
-      # only parses it, which is exactly what we want: it catches a missing
-      # semicolon or bracket in a file that would otherwise white-screen the
-      # whole site.
+      # Check PHP syntax.
       - name: Lint every PHP file
         run: |
           find wp-content -name '*.php' -print0 \
@@ -62,9 +48,7 @@ jobs:
         with:
           node-version: '20'
 
-      # npm install rather than npm ci, because this repository does not commit
-      # a package-lock.json. On a real client project the lock file would be
-      # committed and this would be npm ci for reproducible builds.
+      # Install JavaScript dependencies.
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 

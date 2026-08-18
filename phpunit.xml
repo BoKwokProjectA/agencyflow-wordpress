@@ -1,12 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-  PHPUnit configuration.
-
-  This suite deliberately does NOT boot WordPress. It tests only the pure
-  helper functions, which is why it runs in under a second and needs no
-  database. Testing the WordPress-dependent code would need the full
-  WP test suite, which is noted in the README as a future improvement.
--->
+<!-- PHPUnit configuration for the helper test suite. -->
 <phpunit
     bootstrap="tests/bootstrap.php"
     colors="true"

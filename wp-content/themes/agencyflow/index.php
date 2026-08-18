@@ -2,10 +2,6 @@
 /**
  * Fallback template.
  *
- * WordPress uses this whenever no more specific template matches the
- * request. It is the last stop in the template hierarchy, and every theme
- * is required to have one.
- *
  * @package AgencyFlow
  */
 
@@ -27,9 +23,7 @@ get_header();
 
 			<div class="project-grid">
 				<?php
-				// THE LOOP. have_posts() asks "is there another post in the
-				// results?"; the_post() moves to it and sets up the global
-				// post data that the_title(), the_excerpt() and friends read.
+				// Render the available posts.
 				while ( have_posts() ) :
 					the_post();
 					?>

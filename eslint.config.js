@@ -1,9 +1,5 @@
 /**
- * ESLint configuration (flat config format, ESLint 9+).
- *
- * The rules chosen here are the ones that catch real mistakes in browser
- * JavaScript: undeclared variables, unused variables, accidental globals,
- * and using == where === is meant.
+ * ESLint configuration for the theme JavaScript.
  */
 module.exports = [
   {
@@ -12,14 +8,14 @@ module.exports = [
       ecmaVersion: 2022,
       sourceType: 'script',
       globals: {
-        // Browser globals this project uses.
+        // Browser globals.
         document: 'readonly',
         window: 'readonly',
         console: 'readonly',
         fetch: 'readonly',
         FormData: 'readonly',
         URLSearchParams: 'readonly',
-        // Injected from PHP by wp_localize_script().
+        // Localized by WordPress.
         agencyflowData: 'readonly'
       }
     },

@@ -6,12 +6,6 @@
  *   GET  /wp-json/agencyflow/v1/projects
  *   POST /wp-json/agencyflow/v1/enquiries
  *
- * WordPress already exposes projects at /wp-json/wp/v2/projects, but that
- * response is large and does not include our custom meta in a friendly
- * shape. Building our own route keeps the JSON small and gives the
- * JavaScript exactly the fields it needs — which is the whole point of
- * designing an API rather than dumping the database.
- *
  * @package AgencyFlow_Project_Manager
  */
 
@@ -20,10 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Register both routes.
- *
- * 'rest_api_init' is the hook WordPress fires when it is setting up the
- * REST API, so it is the only correct place to call register_rest_route().
+ * Register the custom REST API routes.
  */
 function agencyflow_register_rest_routes() {
 
@@ -57,19 +48,14 @@ function agencyflow_register_rest_routes() {
 		array(
 			'methods'             => WP_REST_Server::CREATABLE, // POST
 			'callback'            => 'agencyflow_rest_create_enquiry',
-			'permission_callback' => '__return_true',           // Anyone may submit the form...
-			// ...but the callback still checks a nonce before trusting anything.
+			'permission_callback' => '__return_true',           // Public form endpoint; nonce checked in callback.
 		)
 	);
 }
 add_action( 'rest_api_init', 'agencyflow_register_rest_routes' );
 
 /**
- * Keep per_page inside a sane range.
- *
- * Without this, someone could request per_page=100000 and make the server
- * do an enormous amount of work. Validating inputs is not only about
- * security, it is about not letting a stranger set your workload.
+ * Validate the projects per-page parameter.
  *
  * @param mixed $value Incoming value.
  * @return bool
@@ -149,25 +135,19 @@ function agencyflow_rest_get_projects( $request ) {
 		);
 	}
 
-	// rest_ensure_response() wraps our array in a proper WP_REST_Response,
-	// which sets the JSON content type and a 200 status for us.
+	// Return a standard REST response.
 	return rest_ensure_response( $projects );
 }
 
 /**
  * POST /wp-json/agencyflow/v1/enquiries
  *
- * The full server-side journey:
- *   nonce check -> sanitise -> validate -> save -> notify -> respond
- *
  * @param WP_REST_Request $request The incoming request.
  * @return WP_REST_Response|WP_Error
  */
 function agencyflow_rest_create_enquiry( $request ) {
 
-	// --- 1. Nonce -----------------------------------------------------------
-	// The theme puts a fresh nonce in the page; the JavaScript sends it back.
-	// A request without a valid one is rejected with 403 Forbidden.
+	// Verify the request nonce.
 	$nonce = (string) $request->get_param( 'nonce' );
 
 	if ( ! wp_verify_nonce( $nonce, 'agencyflow_enquiry' ) ) {
@@ -178,9 +158,7 @@ function agencyflow_rest_create_enquiry( $request ) {
 		);
 	}
 
-	// --- 2. Sanitise --------------------------------------------------------
-	// Sanitising happens before validating: first make the data safe to
-	// handle, then decide whether it is acceptable.
+	// Sanitise submitted fields.
 	$data = array(
 		'name'         => sanitize_text_field( (string) $request->get_param( 'name' ) ),
 		'email'        => sanitize_email( (string) $request->get_param( 'email' ) ),
@@ -190,13 +168,11 @@ function agencyflow_rest_create_enquiry( $request ) {
 		'message'      => sanitize_textarea_field( (string) $request->get_param( 'message' ) ),
 	);
 
-	// --- 3. Validate --------------------------------------------------------
+	// Validate submitted fields.
 	$errors = agencyflow_validate_enquiry( $data );
 
 	if ( ! empty( $errors ) ) {
-		// 422 Unprocessable Entity: the request was well formed but the
-		// contents failed our rules. The errors map lets the JavaScript
-		// show a message underneath the exact field that is wrong.
+		// Return field-level validation errors.
 		return new WP_Error(
 			'agencyflow_invalid_enquiry',
 			'Please check the highlighted fields.',
@@ -207,7 +183,7 @@ function agencyflow_rest_create_enquiry( $request ) {
 		);
 	}
 
-	// --- 4. Save ------------------------------------------------------------
+	// Store the enquiry.
 	$post_id = agencyflow_store_enquiry( $data );
 
 	if ( is_wp_error( $post_id ) || ! $post_id ) {
@@ -218,12 +194,10 @@ function agencyflow_rest_create_enquiry( $request ) {
 		);
 	}
 
-	// --- 5. Notify (the automated action) -----------------------------------
+	// Send the enquiry notification.
 	agencyflow_notify_new_enquiry( $post_id, $data );
 
-	// --- 6. Respond ---------------------------------------------------------
-	// 201 Created is the correct status when a request has created a new
-	// resource on the server.
+	// Return the created response.
 	return new WP_REST_Response(
 		array(
 			'success' => true,
